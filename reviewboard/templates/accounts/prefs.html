@@ -10,9 +10,11 @@
  <p>
   {% trans "Before you can continue to use Review Board, you'll need to set a few things. This will help us get to know each other better." %}
  </p>
+ {% if "li" in form.groups|cut:"\w" %}
  <p>
   {% trans "At a minimum, make sure you have joined one or more groups." %}
  </p>
+ {% endif %}
 </div>
 {% endbox %}
 {% endif %}
