@@ -10,7 +10,7 @@
  <p>
   {% trans "Before you can continue to use Review Board, you'll need to set a few things. This will help us get to know each other better." %}
  </p>
- {% if "groups" in form.groups|cut:"\w" %}
+ {% if form.fields.groups.choices %}
  <p>
   {% trans "At a minimum, make sure you have joined one or more groups." %}
  </p>
@@ -60,6 +60,7 @@
   </table>
  </div>
 {% endbox %}
+{% if form.fields.groups.choices %}
 {% box "prefsgroup" %}
  <h1 class="title">{% trans "Groups" %}</h1>
  <div class="main">
@@ -67,6 +68,7 @@
   {{form.groups}}
  </div>
 {% endbox %}
+{% endif %}
  <div class="prefsbuttons">
   <input type="submit" value="{% trans "Save Preferences" %}" />
  </div>
