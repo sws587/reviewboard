@@ -6,7 +6,7 @@ class Command(LabelCommand):
     
     help = 'Does some stuff'
 
-    arg = "[this]"
+    label = "[this]"
 
     def handle_label(self, label, **options):
         self.stdout.write('Here is the first command\n')
