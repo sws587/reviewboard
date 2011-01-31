@@ -1,8 +1,10 @@
 import os
 
+from django.contrib.auth.models import User
 from optparse import make_option
 from django.core.management.base import BaseCommand
 from django.core.management.base import NoArgsCommand
+from reviewboard.accounts.models import Profile
 
 class Command(NoArgsCommand):
     help = 'Does some stuff'
@@ -26,6 +28,25 @@ class Command(NoArgsCommand):
 
         if users:
             self.stdout.write("The number of users=" + str(users) + "\n")
+            new_user=User.objects.create(
+                username="tr5mothy2", first_name="T1mothy", last_name="T1berius",
+                email="test@email.com", 
+                password="sha1$1ba1e$3292c45da333e141acd19cd5a624425e98f2efcc",
+                is_staff=False, is_active=True, is_superuser=False,
+                last_login="2011-01-16 21:47:17.529855",
+                date_joined="2011-01-16 21:47:17.529855")
+
+            self.stdout.write("userid=" + str(new_user.id) + "\n")
+
+            Profile.objects.create(
+                user_id=new_user.id,
+                first_time_setup_done=True, collapsed_diffs=True,
+                wordwrapped_diffs=True, syntax_highlighting=True,
+                show_submitted=True, sort_review_request_columns="",
+                sort_dashboard_columns="", sort_submitter_columns="",
+                sort_group_columns="", dashboard_columns="",
+                submitter_columns="", group_columns="")
+
 
         if review_requests:
             req_min, req_max = self.parseCommand("review_requests", review_requests)
