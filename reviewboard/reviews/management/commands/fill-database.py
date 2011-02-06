@@ -42,17 +42,17 @@ class Command(NoArgsCommand):
             diff_min, diff_max = self.parseCommand("diffs", diffs)
             self.stdout.write("You entered a range from " + str(diff_min) + \
                 " to " + str(diff_max) + "\n")
-        
+
         if diff_comments:
             diff_com_min, diff_com_max = self.parseCommand("diff-comments", diff_comments)
             self.stdout.write("You entered a range from " + str(diff_com_min) + \
                 " to " + str(diff_com_max) + "\n")
-            
+
         if users:
             self.stdout.write("The number of users=" + str(users) + "\n")
             for i in range(1, users+1):
                 new_user=User.objects.create(
-                    username="testme99"+str(i), first_name="Testing", last_name="Thomas",
+                    username="test"+str(i), first_name="Testing", last_name="Thomas",
                     email="test@email.com", 
                     #default password = test1
                     password="sha1$21fca$4ecf8335b1bd3331ad3f216c7a35029787be261a",
