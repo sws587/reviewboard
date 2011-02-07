@@ -5,6 +5,7 @@ from optparse import make_option
 from django.core.management.base import BaseCommand
 from django.core.management.base import NoArgsCommand
 from reviewboard.accounts.models import Profile
+from reviewboard.reviews.models import ReviewRequest
 
 class Command(NoArgsCommand):
     help = 'Does some stuff'
@@ -52,7 +53,9 @@ class Command(NoArgsCommand):
             self.stdout.write("The number of users=" + str(users) + "\n")
             for i in range(1, users+1):
                 new_user=User.objects.create(
-                    username="test"+str(i), first_name="Testing", last_name="Thomas",
+                    username=self.randUsername(), #temporary to avoid having to flush
+#                    username="pest"+str(i), 
+                    first_name="Testing", last_name="Thomas",
                     email="test@email.com", 
                     #default password = test1
                     password="sha1$21fca$4ecf8335b1bd3331ad3f216c7a35029787be261a",
@@ -65,7 +68,7 @@ class Command(NoArgsCommand):
                 #new_user.save()
 
                 Profile.objects.create(
-                    user_id=new_user.id,
+                    user=new_user,
                     first_time_setup_done=True, collapsed_diffs=True,
                     wordwrapped_diffs=True, syntax_highlighting=True,
                     show_submitted=True, sort_review_request_columns="",
@@ -78,6 +81,15 @@ class Command(NoArgsCommand):
                 if not req_min == None or not req_max == None:
                     req_val = random.randrange(req_min, req_max)
 
+                    for k in range(1,req_val+1):
+                        review_request=ReviewRequest.objects.create(new_user,None)
+                        review_request.public=True
+                        review_request.summary="Here is a summary"
+                        review_request.description="Here is a description"
+                        review_request.shipit_count=0
+                        #set the targeted reviewer to be the superuser or 1st defined user
+                        review_request.target_people.add(User.objects.get(id__exact="1"))
+                        review_request.save()
 
 
                 #generate output as users & data is created
@@ -103,3 +115,12 @@ class Command(NoArgsCommand):
             exit()
 
 
+#Temporary function used to generate random usernames so no flushing needed
+    def randUsername(self):
+        alphabet = 'abcdefghijklmnopqrstuvwxyz'
+        min = 5
+        max = 7
+        string=''
+        for x in random.sample(alphabet,random.randint(min,max)):
+            string+=x
+        return string
