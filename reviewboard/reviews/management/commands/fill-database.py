@@ -1,24 +1,29 @@
-import os
-import random
-from django.contrib.auth.models import User
+import os, random, sys
 from optparse import make_option
+
+from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.core.management.base import NoArgsCommand
+
 from reviewboard.accounts.models import Profile
+from reviewboard.diffviewer.models import FileDiff, DiffSet, DiffSetHistory
 from reviewboard.reviews.models import ReviewRequest
+from reviewboard.scmtools.models import Repository, Tool
+from reviewboard.scmtools.core import PRE_CREATION, UNKNOWN, FileNotFoundError
+
 
 class Command(NoArgsCommand):
     help = 'Does some stuff'
 
     option_list = BaseCommand.option_list + ( 
         make_option('-u', '--users', type="int", default=None, dest='users',
-            help='Specifies the number of users to add to the db'),
+            help='The number of users to add'),
         make_option('--review-requests', default=None, dest='review-requests',
-            help='Specifies the range of review requests for each user.'),
+            help='The number of review requests per user [min:max]'),
         make_option('--diffs', default=None, dest='diffs',
-            help='Specifies the range of diffs for each user.'),
+            help='The number of diff per review request [min:max]'),
         make_option('--diff-comments', default=None, dest='diff-comments',
-            help='Specifies the range of review requests for each user.')
+            help='The number of comments per diff [min:max]')
         )
 
     def handle_noargs(self, **options):
@@ -36,25 +41,48 @@ class Command(NoArgsCommand):
 
         if review_requests:
             req_min, req_max = self.parseCommand("review_requests", review_requests)
-            self.stdout.write("You entered a range from " + str(req_min) + \
+
+            #TEMPORARY TEXT OUTPUT
+            self.stdout.write("You entered review-request range: " + str(req_min) + \
                     " to " + str(req_max) + "\n" )
 
         if diffs:
             diff_min, diff_max = self.parseCommand("diffs", diffs)
+            #TEMPORARY OUTPUT
             self.stdout.write("You entered a range from " + str(diff_min) + \
                 " to " + str(diff_max) + "\n")
 
         if diff_comments:
             diff_com_min, diff_com_max = self.parseCommand("diff-comments", diff_comments)
+            #TEMPORARY OUTPUT
             self.stdout.write("You entered a range from " + str(diff_com_min) + \
                 " to " + str(diff_com_max) + "\n")
 
         if users:
+            #TEMPORARY OUTPUT
             self.stdout.write("The number of users=" + str(users) + "\n")
+            
+            if req_min:
+                #path to the test repository based from this script
+                repo_dir = str(os.path.abspath(sys.argv[0] + 
+                    'manage.py/../scmtools/testdata/git_repo'))
+                if not os.path.exists(repo_dir):
+                    self.stdout.write("The path to the repository does not exist\n")
+                    return
+
+                self.stdout.write("this is the repo directory:\n" + repo_dir + "\n" )
+                self.stdout.write("SCMTOOL: " + str(Tool.objects.get(name="Git")) + "\n")
+
+                #Setup a repository
+                test_repository = Repository.objects.create(
+                    name="Test Repository", path=repo_dir, 
+                    tool=Tool.objects.get(name="Git")
+                    )
+
             for i in range(1, users+1):
                 new_user=User.objects.create(
                     username=self.randUsername(), #temporary to avoid having to flush
-#                    username="pest"+str(i), 
+                    #username="test"+str(i), 
                     first_name="Testing", last_name="Thomas",
                     email="test@email.com", 
                     #default password = test1
@@ -84,11 +112,60 @@ class Command(NoArgsCommand):
                     for k in range(1,req_val+1):
                         review_request=ReviewRequest.objects.create(new_user,None)
                         review_request.public=True
-                        review_request.summary="Here is a summary"
-                        review_request.description="Here is a description"
+                        review_request.summary="TEST v0.16 summary"
+                        review_request.description="TEST v0.16 is a description"
                         review_request.shipit_count=0
+                        review_request.repository=test_repository
                         #set the targeted reviewer to be the superuser or 1st defined user
                         review_request.target_people.add(User.objects.get(id__exact="1"))
+
+                        review_request.save()
+
+                        diff_dir=str(os.path.abspath(sys.argv[0] + 
+                                'manage.py/../scmtools/testdata'))
+
+
+                        # Parse the diff
+                        files = list(self._process_files(
+                            "git_newfile.diff", diff_dir, None ))
+
+                        #if diffs required upload them
+                        if not diff_min == None or not diff_max==None:
+                            diff_val = random.randrange(diff_min, diff_max)
+                            self.stdout.write("diffval="+str(diff_val)+"\n")
+
+                            diff_hist = DiffSetHistory.objects.create(
+                                name="git_newfile.diff"
+                                )
+
+                            diff_hist.save()
+
+                            diff_set=DiffSet.objects.create(
+                                name="git_newfile.diff",
+                                revision=1,
+                                basedir=diff_dir,
+                                history=diff_hist,
+                                repository=test_repository,
+                                )
+                            diff_set.save()
+                            
+                            src_dir = str(os.path.abspath(sys.argv[0] + 
+                                'manage.py/../scmtools/testdata/git_newfile.diff'))
+
+                            file_diff = FileDiff.objects.create(
+                                diffset=diff_set,
+                                source_file=src_dir,
+                                dest_file=src_dir,
+                                diff=src_dir,
+                                dest_detail="(working copy)",
+                                source_revision='PRE-CREATION',
+                                status='M'
+                                )
+
+                            file_diff.save()
+
+                        review_request.diffset_history=diff_hist
+                        
                         review_request.save()
 
 
@@ -106,12 +183,13 @@ class Command(NoArgsCommand):
                 self.stdout.write(output)
 
 
+    #Parse the values given in the command line
     def parseCommand(self, com_arg, com_string):
         try:
-            min_range, max_range = [ int(item.strip()) for item in com_string.split(":")]
-            return min_range, max_range
+            return (int(item.strip()) for item in com_string.split(':'))
         except ValueError:
-            print "You failed to provide \"" + com_arg + "\" with two values of type int."
+            print >> sys.stderr, "You failed to provide \"" + com_arg \
+                + "\" with two values of type int."
             exit()
 
 
@@ -124,3 +202,49 @@ class Command(NoArgsCommand):
         for x in random.sample(alphabet,random.randint(min,max)):
             string+=x
         return string
+
+#COPIED DIRECTLY FROM diffviewer/forms.py
+    def _process_files(self, file, basedir, check_existance=False):
+        tool = self.repository.get_scmtool()
+
+        for f in tool.get_parser(file.read()).parse():
+            f2, revision = tool.parse_diff_revision(f.origFile, f.origInfo)
+            if f2.startswith("/"):
+                filename = f2
+            else:
+                filename = os.path.join(basedir, f2).replace("\\", "/")
+
+            # FIXME: this would be a good place to find permissions errors
+            if (revision != PRE_CREATION and
+                revision != UNKNOWN and
+                not f.binary and
+                not f.deleted and
+                (check_existance and
+                 not tool.file_exists(filename, revision))):
+                raise FileNotFoundError(filename, revision)
+
+            f.origFile = filename
+            f.origInfo = revision
+
+            yield f
+
+
+    def _compare_files(self, filename1, filename2):
+        """
+        Compares two files, giving precedence to header files over source
+        files. This allows the resulting list of files to be more
+        intelligently sorted.
+        """
+        if filename1.find('.') != -1 and filename2.find('.') != -1:
+            basename1, ext1 = filename1.rsplit('.', 1)
+            basename2, ext2 = filename2.rsplit('.', 1)
+
+            if basename1 == basename2:
+                if ext1 in self.HEADER_EXTENSIONS and \
+                   ext2 in self.IMPL_EXTENSIONS:
+                    return -1
+                elif ext1 in self.IMPL_EXTENSIONS and \
+                     ext2 in self.HEADER_EXTENSIONS:
+                    return 1
+
+        return cmp(filename1, filename2) 
