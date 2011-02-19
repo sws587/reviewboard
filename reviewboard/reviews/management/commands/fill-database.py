@@ -4,13 +4,14 @@ from optparse import make_option
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.core.management.base import NoArgsCommand
+from django.utils.encoding import smart_unicode
 
 from reviewboard.accounts.models import Profile
+from reviewboard.diffviewer.diffutils import DEFAULT_DIFF_COMPAT_VERSION
 from reviewboard.diffviewer.models import FileDiff, DiffSet, DiffSetHistory
 from reviewboard.reviews.models import ReviewRequest
 from reviewboard.scmtools.models import Repository, Tool
 from reviewboard.scmtools.core import PRE_CREATION, UNKNOWN, FileNotFoundError
-
 
 class Command(NoArgsCommand):
     help = 'Does some stuff'
@@ -79,6 +80,8 @@ class Command(NoArgsCommand):
                     tool=Tool.objects.get(name="Git")
                     )
 
+                self.repository = test_repository
+
             for i in range(1, users+1):
                 new_user=User.objects.create(
                     username=self.randUsername(), #temporary to avoid having to flush
@@ -118,56 +121,144 @@ class Command(NoArgsCommand):
                         review_request.repository=test_repository
                         #set the targeted reviewer to be the superuser or 1st defined user
                         review_request.target_people.add(User.objects.get(id__exact="1"))
-
                         review_request.save()
 
-                        diff_dir=str(os.path.abspath(sys.argv[0] + 
-                                'manage.py/../scmtools/testdata'))
+                        tool = self.repository.get_scmtool()
+                        # Grab the base directory if there is one.
+                        ## NOT SURE WHAT THIS IS SUPPOSED TO DO, IT DOESN"T SEEM TO GET DIRECTORY
+                        if not tool.get_diffs_use_absolute_paths():
+                            try:
+                                basedir = smart_unicode(self.cleaned_data['basedir'].strip())
+                            except AttributeError:
+                                raise NoBaseDirError(_('The "Base Diff Path" field is required'))
+                        else:
+                            basedir = ''
 
+                        diff_dir = str(os.path.abspath(sys.argv[0] + 
+                            'manage.py/../scmtools/testdata'))
+                        if not os.path.exists(diff_dir):
+                            self.stdout.write("The path to the repository does not exist\n")
+                            return
 
-                        # Parse the diff
+                        self.stdout.write('the base dir= ' + basedir)
+
+                        self.stdout.write("hellooo mcfly\n")
+
+                        diff_file =open(diff_dir + '/git_newfile.diff', 'r')
+
+                        parent_diff_file = None
+                        diffset_history = None
+
+                        diffset_history = DiffSetHistory.objects.create(
+                            name="git_newfile.diff"
+                            )
+
+                        diffset_history.save()
+
+                         # Parse the diff
                         files = list(self._process_files(
-                            "git_newfile.diff", diff_dir, None ))
+                            diff_file, diff_dir, check_existance=(not parent_diff_file)))
 
-                        #if diffs required upload them
-                        if not diff_min == None or not diff_max==None:
-                            diff_val = random.randrange(diff_min, diff_max)
-                            self.stdout.write("diffval="+str(diff_val)+"\n")
+                        if len(files) == 0:
+                            raise EmptyDiffError(_("The diff file is empty"))
 
-                            diff_hist = DiffSetHistory.objects.create(
-                                name="git_newfile.diff"
-                                )
+                        # Sort the files so that header files come before implementation.
+                        files.sort(cmp=self._compare_files, key=lambda f: f.origFile)
 
-                            diff_hist.save()
+                        # Parse the parent diff
+                        parent_files = {}
 
-                            diff_set=DiffSet.objects.create(
-                                name="git_newfile.diff",
-                                revision=1,
-                                basedir=diff_dir,
-                                history=diff_hist,
-                                repository=test_repository,
-                                )
-                            diff_set.save()
+                        # This is used only for tools like Mercurial that use atomic changeset
+                        # IDs to identify all file versions but not individual file version
+                        # IDs.
+                        parent_changeset_id = None
+
+                        if parent_diff_file:
+                            # If the user supplied a base diff, we need to parse it and
+                            # later apply each of the files that are in the main diff
+                            for f in self._process_files(parent_diff_file, diff_dir,
+                                                         check_existance=True):
+                                parent_files[f.origFile] = f
+
+                                # Store the original changeset ID if we have it; this should
+                                # be the same for all files.
+                                if f.origChangesetId:
+                                    parent_changeset_id = f.origChangesetId
+
+                        diffset = DiffSet(name=diff_file.name, revision=0,
+                                          basedir=diff_dir,
+                                          history=diffset_history,
+                                          diffcompat=DEFAULT_DIFF_COMPAT_VERSION)
+                        diffset.repository = self.repository
+                        diffset.save()
+
+                        for f in files:
+                            if f.origFile in parent_files:
+                                parent_file = parent_files[f.origFile]
+                                parent_content = parent_file.data
+                                source_rev = parent_file.origInfo
+                            else:
+                                parent_content = ""
+
+                                if (tool.diff_uses_changeset_ids and
+                                    parent_changeset_id and
+                                    f.origInfo != PRE_CREATION):
+                                    source_rev = parent_changeset_id
+                                else:
+                                    source_rev = f.origInfo
+
+                            dest_file = os.path.join(diff_dir, f.newFile).replace("\\", "/")
+
+                            if f.deleted:
+                                status = FileDiff.DELETED
+                            else:
+                                status = FileDiff.MODIFIED
+
+                            filediff = FileDiff(diffset=diffset,
+                                                source_file=f.origFile,
+                                                dest_file=dest_file,
+                                                source_revision=smart_unicode(source_rev),
+                                                dest_detail=f.newInfo,
+                                                diff=f.data,
+                                                parent_diff=parent_content,
+                                                binary=f.binary,
+                                                status=status)
+                            filediff.save()
+
+
+#                        diff_dir=str(os.path.abspath(sys.argv[0] + 
+#                                'manage.py/../scmtools/testdata'))
+
+#                       if not diff_min == None or not diff_max==None:
+#                            diff_val = random.randrange(diff_min, diff_max)
+#                            self.stdout.write("diffval="+str(diff_val)+"\n")
+
+#                            diff_set=DiffSet.objects.create(
+#                                name="git_newfile.diff",
+#                                revision=1,
+#                                basedir=diff_dir,
+#                                history=diff_hist,
+#                                repository=test_repository,
+#                                )
+#                            diff_set.save()
                             
-                            src_dir = str(os.path.abspath(sys.argv[0] + 
-                                'manage.py/../scmtools/testdata/git_newfile.diff'))
+#                            src_dir = str(os.path.abspath(sys.argv[0] + 
+#                                'manage.py/../scmtools/testdata/git_newfile.diff'))
 
-                            file_diff = FileDiff.objects.create(
-                                diffset=diff_set,
-                                source_file=src_dir,
-                                dest_file=src_dir,
-                                diff=src_dir,
-                                dest_detail="(working copy)",
-                                source_revision='PRE-CREATION',
-                                status='M'
-                                )
+#                            file_diff = FileDiff.objects.create(
+#                                diffset=diff_set,
+#                                source_file=src_dir,
+#                                dest_file=src_dir,
+#                                diff=src_dir,
+#                                dest_detail="(working copy)",
+#                                source_revision='PRE-CREATION',
+#                                status='M'
+#                                )
 
-                            file_diff.save()
+#                            file_diff.save()
 
-                        review_request.diffset_history=diff_hist
-                        
+                        review_request.diffset_history=diffset_history
                         review_request.save()
-
 
                 #generate output as users & data is created
                 output = "username=" + new_user.username + ", userId=" + \
