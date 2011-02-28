@@ -11,7 +11,7 @@ from django.core.management.base import NoArgsCommand
 from reviewboard.accounts.models import Profile
 from reviewboard.diffviewer.models import FileDiff, DiffSet, DiffSetHistory
 from reviewboard.diffviewer.forms import UploadDiffForm
-from reviewboard.reviews.models import ReviewRequest
+from reviewboard.reviews.models import ReviewRequest, Review, Comment
 from reviewboard.scmtools.models import Repository, Tool
 
 
@@ -25,6 +25,8 @@ class Command(NoArgsCommand):
             help='The number of review requests per user [min:max]'),
         make_option('--diffs', default=None, dest='diffs',
             help='The number of diff per review request [min:max]'),
+        make_option('--reviews', default=None, dest='reviews',
+            help='The number of reviews per diff [min:max]'),
         make_option('--diff-comments', default=None, dest='diff-comments',
             help='The number of comments per diff [min:max]')
         )
@@ -33,9 +35,11 @@ class Command(NoArgsCommand):
         users = options.get('users', None)
         review_requests = options.get('review-requests', None)
         diffs = options.get('diffs', None)
+        reviews = options.get('reviews', None)
         diff_comments = options.get('diff-comments', None)
         num_of_requests = None
         num_of_diffs = None
+        num_of_reviews = None
         num_of_diff_comments = None
         random.seed()
 
@@ -55,11 +59,14 @@ class Command(NoArgsCommand):
         if diffs:
             num_of_diffs = self.parseCommand("diffs", diffs)
 
+        if reviews:
+            num_of_reviews = self.parseCommand("reviews", reviews)
+
         if diff_comments:
             num_of_diff_comments = self.parseCommand("diff-comments",
                 diff_comments)
             #TEMPORARY OUTPUT
-            self.stdout.write("You entered a range from " + \
+            self.stdout.write("You entered diff comments from " + \
                 str(num_of_diff_comments) + \
                 " to " + str(num_of_diff_comments) + "\n")
 
@@ -117,14 +124,14 @@ class Command(NoArgsCommand):
 
 
                 #Review Requests
-                if not num_of_requests == None:
+                if num_of_requests:
                     if len(num_of_requests)==1:
                         req_val = num_of_requests[0]
                     else:
                         req_val = random.randrange(num_of_requests[0],
                             num_of_requests[1])
 
-                    for k in range(1,req_val+1):
+                    for j in range(0, req_val):
                         review_request = ReviewRequest.objects.create(new_user,
                             None)
                         review_request.public=True
@@ -137,7 +144,7 @@ class Command(NoArgsCommand):
                             User.objects.get(id__exact="1"))
                         review_request.save()
 
-                        # ADD THE DIFFS IF ANY TO ADD
+                       # ADD THE DIFFS IF ANY TO ADD
                         if num_of_diffs:
                             if len(num_of_diffs) == 1:
                                 diff_val = num_of_diffs[0]
@@ -172,7 +179,7 @@ class Command(NoArgsCommand):
                                 name='testDiffFile' + str(i))
                             diffset_history.save()
 
-                            for j in range(0, diff_val):
+                            for k in range(0, diff_val):
                                 random_number = random.randint(0, len(files)-1)
                                 file_to_open = diff_dir + files[random_number]
                                 #TEMPORARY WRITE OUT DIFF TO OPEN
@@ -181,9 +188,65 @@ class Command(NoArgsCommand):
                                 filename = open(file_to_open, 'r')
                                 form = UploadDiffForm(
                                     review_request.repository, filename)
-                                form.create(filename, None, diffset_history)
+                                cur_diff=form.create(filename, None, diffset_history)
                                 review_request.diffset_history = diffset_history
                                 review_request.publish(new_user)
+
+                                # ADD THE REVIEWS IF ANY
+                                if num_of_reviews:
+                                    if len(num_of_reviews) == 1:
+                                        review_val = num_of_reviews[0]
+                                    else:
+                                        review_val = random.randrange(
+                                            num_of_reviews[0],
+                                            num_of_reviews[1])
+
+                                    for l in range(0, review_val):
+                                        reviews = Review.objects.create(
+                                            review_request=review_request,
+                                            user=new_user)
+
+                                        # ADD COMMENTS TO DIFFS IF ANY
+                                        if num_of_diff_comments:
+                                            if len(num_of_diff_comments)==1:
+                                                comment_val = num_of_diff_comments[0]
+                                            else:
+                                                comment_val = random.randrange(
+                                                    num_of_diff_comments[0],
+                                                    num_of_diff_comments[1])
+
+                                        for m in range(0, comment_val):
+                                            #TEMPORARY OUTPUT
+                                            self.stdout.write("Num of diff comments:"+\
+                                                str(comment_val) + "\n")
+
+                                            #Cur_diff is a diffset
+                                            self.stdout.write("########\n\ncur_diff_all=" + str(cur_diff.files.all()) + "\n\n")
+                                            self.stdout.write("\nCOUNT=" + str(cur_diff.files.count()) + "\n")
+
+                                            for file_diff in cur_diff.files.all():
+                                                self.stdout.write("cur_diff.files=" + str(file_diff.dest_detail) + "\n")
+                                                break #HORRIBLE CHEAT BUT WORKS SINCE
+                                                      #cur_diff.files lists recent file
+
+        #                                    i = cur_diff.files.filter(diffset_id=cur_diff.files.diffset_id)
+        #                                    self.stdout.write("i=" + str(i) + "\n")
+
+                                            #cur_diff.files is all instances of filediffs for cur_diff
+
+                                            diff_comment = Comment.objects.create(
+                                                filediff=file_diff,
+                                                text="hi comment",
+                                                first_line=1,
+                                                num_lines=1)
+
+                                            review_request.publish(new_user)
+
+                                            reviews.comments.add(diff_comment)
+                                            reviews.save()      #Adds to the database
+
+                                            reviews.publish(new_user)   #Publically available
+
 
                 #generate output as users & data is created
                 output = "username=" + new_user.username + ", userId=" + \
