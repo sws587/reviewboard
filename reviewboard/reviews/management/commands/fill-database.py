@@ -122,7 +122,6 @@ class Command(NoArgsCommand):
                     sort_group_columns="", dashboard_columns="",
                     submitter_columns="", group_columns="")
 
-
                 #Review Requests
                 if num_of_requests:
                     if len(num_of_requests)==1:
@@ -215,38 +214,13 @@ class Command(NoArgsCommand):
                                                     num_of_diff_comments[0],
                                                     num_of_diff_comments[1])
 
-                                        for m in range(0, comment_val):
-                                            #TEMPORARY OUTPUT
-                                            self.stdout.write("Num of diff comments:"+\
-                                                str(comment_val) + "\n")
-
-                                            #Cur_diff is a diffset
-                                            self.stdout.write("########\n\ncur_diff_all=" + str(cur_diff.files.all()) + "\n\n")
-                                            self.stdout.write("\nCOUNT=" + str(cur_diff.files.count()) + "\n")
-
-                                            for file_diff in cur_diff.files.all():
-                                                self.stdout.write("cur_diff.files=" + str(file_diff.dest_detail) + "\n")
-                                                break #HORRIBLE CHEAT BUT WORKS SINCE
-                                                      #cur_diff.files lists recent file
-
-        #                                    i = cur_diff.files.filter(diffset_id=cur_diff.files.diffset_id)
-        #                                    self.stdout.write("i=" + str(i) + "\n")
-
-                                            #cur_diff.files is all instances of filediffs for cur_diff
-
-                                            diff_comment = Comment.objects.create(
-                                                filediff=file_diff,
-                                                text="hi comment",
-                                                first_line=1,
-                                                num_lines=1)
-
-                                            review_request.publish(new_user)
-
-                                            reviews.comments.add(diff_comment)
-                                            reviews.save()      #Adds to the database
-
-                                            reviews.publish(new_user)   #Publically available
-
+                                            #Perform createDiffComments
+                                            self.createDiffComments(
+                                                comment_val,
+                                                cur_diff,
+                                                review_request,
+                                                reviews,
+                                                new_user)
 
                 #generate output as users & data is created
                 output = "username=" + new_user.username + ", userId=" + \
@@ -282,3 +256,51 @@ class Command(NoArgsCommand):
             string+=x
         return string
 
+
+    #CREATE THE DIFF COMMENTS
+    #NOTE: TO UNDO: just cp from for to before return & replace above.
+    def createDiffComments(self, 
+        comment_val, cur_diff, review_request, reviews, new_user):
+
+        for m in range(0, comment_val):
+            #TEMPORARY OUTPUT
+            self.stdout.write("Num of diff comments:"+\
+                str(comment_val) + " CURRENT i=" + str(m+1) + "\n")
+
+            #Cur_diff is a diffset
+            self.stdout.write("########\n\ncur_diff_all=" +\
+                str(cur_diff.files.all()) + "\n\n")
+            self.stdout.write("\nCOUNT=" + str(cur_diff.files.count()) + "\n")
+
+            for file_diff in cur_diff.files.all():
+                self.stdout.write("cur_diff.files=" + \
+                    str(file_diff.dest_detail) + "\n")
+                break #HORRIBLE CHEAT BUT WORKS SINCE
+                      #cur_diff.files lists recent file
+
+            #CHOOSE RANDOM LINES TO COMMENT
+            #Max lines in diff just static aloc
+            #Should be mod in future to read
+            #   diff to get max line num
+            max_lines = 220
+            first_line = random.randrange(1,max_lines-1)
+            remain_lines = max_lines - first_line
+            num_lines = random.randrange(1,remain_lines)
+
+            self.stdout.write("\n1st line=" + str(first_line) +\
+                " REMAINING=" + str(remain_lines) + "\n")
+
+            diff_comment = Comment.objects.create(
+                filediff=file_diff,
+                text="comment number " + str(m+1),
+                first_line=first_line,
+                num_lines=num_lines)
+
+            review_request.publish(new_user)
+
+            reviews.comments.add(diff_comment)
+            reviews.save()      #Adds to the database
+
+            reviews.publish(new_user)   #Publically available
+
+        return
