@@ -43,21 +43,52 @@ class Command(NoArgsCommand):
         num_of_diff_comments = None
         random.seed()
 
+        verbose = True  #Generate details as program runs
+
         if review_requests:
             num_of_requests = self.parseCommand("review_requests",
                 review_requests)
 
-            #TEMPORARY TEXT OUTPUT
-            if len(num_of_requests) == 1:
-                self.stdout.write("Each user gets exactly " \
-                    + str(num_of_requests[0]) + "requests\n")
-            else:
-                self.stdout.write("Review-request range: " \
-                    + str(num_of_requests[0]) + \
-                    " to " + str(num_of_requests[1]) + "\n" )
+            # SETUP REPOSITORY
+            repo_dir = str(os.path.abspath(sys.argv[0] +
+                'manage.py/../scmtools/testdata/git_repo'))
+            if not os.path.exists(repo_dir):
+                self.stdout.write("The path to the repository does " + \
+                    "not exist\n")
+                return
+
+            test_repository = Repository.objects.create(
+                name="Test Repository", path=repo_dir,
+                tool=Tool.objects.get(name="Git")
+                )
+
+            self.repository = test_repository
 
         if diffs:
             num_of_diffs = self.parseCommand("diffs", diffs)
+
+            # CREATE THE DIFF DIRECTORY LOCATIONS
+            diff_dir_tmp = str(os.path.abspath(sys.argv[0] +
+                'manage.py/../reviews/management/' + \
+                'commands/diffs'))
+            if not os.path.exists(diff_dir_tmp):
+                print >> sys.stderr, "The path to the " + \
+                    "repository does not exist\n"
+                self.stdout.write("dir: " + diff_dir_tmp)
+                return
+            diff_dir = diff_dir_tmp + '/' #add trailing slash
+
+            #Get a list of the appropriate files
+            files = []
+            for chosen_file in os.listdir(diff_dir):
+                if '.diff' in chosen_file:
+                    files.append(chosen_file)
+
+            #Check for any diffs in the files
+            if len(files) == 0:
+                print >> sys.stderr, "There are no " + \
+                    "diff files in this directory"
+                return
 
         if reviews:
             num_of_reviews = self.parseCommand("reviews", reviews)
@@ -65,175 +96,148 @@ class Command(NoArgsCommand):
         if diff_comments:
             num_of_diff_comments = self.parseCommand("diff-comments",
                 diff_comments)
-            #TEMPORARY OUTPUT
-            self.stdout.write("You entered diff comments from " + \
-                str(num_of_diff_comments) + \
-                " to " + str(num_of_diff_comments) + "\n")
 
-        if users:
-            #TEMPORARY OUTPUT
-            self.stdout.write("The number of users=" + str(users) + "\n")
+        # users is required for any other operation
+        if not users:
+            print >> sys.stderr, "You must add at least 1 user\n"
+            exit()
 
-            if num_of_requests:
-                #path to the test repository based from this script
-                repo_dir = str(os.path.abspath(sys.argv[0] +
-                    'manage.py/../scmtools/testdata/git_repo'))
-                if not os.path.exists(repo_dir):
-                    self.stdout.write("The path to the repository does " + \
-                        "not exist\n")
-                    return
+        # START ADDING DATA TO THE DATABASE
+        for i in range(1, users+1):
+            new_user = User.objects.create(
+                username=self.randUsername(), #temp to avoid flushing
+                #username="test"+str(i),
+                first_name="Testing", last_name="Thomas",
+                email="test@email.com",
+                #default password = test1
+                password="sha1$21fca$4ecf8335b1bd3331ad3f216c7a35029787be261a",
+                is_staff=False, is_active=True, is_superuser=False,
+                last_login="2011-01-16 21:47:17.529855",
+                date_joined="2011-01-16 21:47:17.529855")
 
-                self.stdout.write("this is the repo directory:\n" + \
-                    repo_dir + "\n" )
-                self.stdout.write("SCMTOOL: " + \
-                    str(Tool.objects.get(name="Git")) + "\n")
+            #Uncomment to set a custom password
+            #new_user.set_password('reviewboard1')
+            #new_user.save()
 
-                #Setup a repository
-                test_repository = Repository.objects.create(
-                    name="Test Repository", path=repo_dir,
-                    tool=Tool.objects.get(name="Git")
-                    )
+            Profile.objects.create(
+                user=new_user,
+                first_time_setup_done=True, collapsed_diffs=True,
+                wordwrapped_diffs=True, syntax_highlighting=True,
+                show_submitted=True, sort_review_request_columns="",
+                sort_dashboard_columns="", sort_submitter_columns="",
+                sort_group_columns="", dashboard_columns="",
+                submitter_columns="", group_columns="")
 
-                self.repository = test_repository
+            #Review Requests
+            req_val = self.pickRandomValue(num_of_requests)
 
-            for i in range(1, users+1):
-                new_user = User.objects.create(
-                    username=self.randUsername(), #temp to avoid flushing
-                    #username="test"+str(i),
-                    first_name="Testing", last_name="Thomas",
-                    email="test@email.com",
-                    #default password = test1
-                    password="sha1$21fca$4ecf8335b1bd3331ad3f216c7a350297" + \
-                        "87be261a",
-                    is_staff=False, is_active=True, is_superuser=False,
-                    last_login="2011-01-16 21:47:17.529855",
-                    date_joined="2011-01-16 21:47:17.529855")
+            if verbose:
+                self.stdout.write("\nFor user: " + str(new_user.username) +\
+                    "\n============================\n")
 
-                #Uncomment to set a custom password
-                #new_user.set_password('reviewboard1')
-                #new_user.save()
+            for j in range(0, req_val):
 
-                Profile.objects.create(
-                    user=new_user,
-                    first_time_setup_done=True, collapsed_diffs=True,
-                    wordwrapped_diffs=True, syntax_highlighting=True,
-                    show_submitted=True, sort_review_request_columns="",
-                    sort_dashboard_columns="", sort_submitter_columns="",
-                    sort_group_columns="", dashboard_columns="",
-                    submitter_columns="", group_columns="")
+                if verbose:
+                    self.stdout.write("Request #" + str(j) +\
+                        ":\n")
 
-                #Review Requests
-                if num_of_requests:
-                    if len(num_of_requests)==1:
-                        req_val = num_of_requests[0]
-                    else:
-                        req_val = random.randrange(num_of_requests[0],
-                            num_of_requests[1])
+                review_request = ReviewRequest.objects.create(new_user,
+                    None)
+                review_request.public=True
+                review_request.summary="TEST v1.00 summary"
+                review_request.description="TEST v1.00 is a description"
+                review_request.shipit_count=0
+                review_request.repository=test_repository
+                #set the targeted reviewer to superuser or 1st defined
+                review_request.target_people.add(
+                    User.objects.get(id__exact="1"))
+                review_request.save()
 
-                    for j in range(0, req_val):
-                        review_request = ReviewRequest.objects.create(new_user,
-                            None)
-                        review_request.public=True
-                        review_request.summary="TEST v0.21 summary"
-                        review_request.description="TEST v0.21 is a description"
-                        review_request.shipit_count=0
-                        review_request.repository=test_repository
-                        #set the targeted reviewer to superuser or 1st defined
-                        review_request.target_people.add(
-                            User.objects.get(id__exact="1"))
-                        review_request.save()
+                # ADD THE DIFFS IF ANY TO ADD
+                diff_val = self.pickRandomValue(num_of_diffs)
 
-                       # ADD THE DIFFS IF ANY TO ADD
-                        if num_of_diffs:
-                            if len(num_of_diffs) == 1:
-                                diff_val = num_of_diffs[0]
-                            else:
-                                diff_val = random.randrange(num_of_diffs[0],
-                                    num_of_diffs[1])
+                # if adding diffs add history
+                if diff_val > 0:
+                    diffset_history = DiffSetHistory.objects.create(
+                        name='testDiffFile' + str(i))
+                    diffset_history.save()
+                    
+                # won't execute if diff_val is 0, ie: no diffs requested
+                for k in range(0, diff_val):
+                
+                    if verbose:
+                        self.stdout.write("\tDiff #" + str(k) +\
+                            ":\n")
 
-                            # CREATE THE DIFF DIRECTORY LOCATIONS
-                            diff_dir_tmp = str(os.path.abspath(sys.argv[0] +
-                                'manage.py/../reviews/management/' + \
-                                'commands/diffs'))
-                            if not os.path.exists(diff_dir_tmp):
-                                print >> sys.stderr, "The path to the " + \
-                                    "repository does not exist\n"
-                                self.stdout.write("dir: " + diff_dir_tmp)
-                                return
-                            diff_dir = diff_dir_tmp + '/' #add trailing slash
+                    random_number = random.randint(0, len(files)-1)
+                    file_to_open = diff_dir + files[random_number]
+                    filename = open(file_to_open, 'r')
+                    form = UploadDiffForm(
+                        review_request.repository, filename)
+                    cur_diff=form.create(filename, None, diffset_history)
+                    review_request.diffset_history = diffset_history
+                    review_request.publish(new_user)
 
-                            #Get a list of the appropriate files
-                            files = []
-                            for chosen_file in os.listdir(diff_dir):
-                                if '.diff' in chosen_file:
-                                    files.append(chosen_file)
+                    # ADD THE REVIEWS IF ANY
+                    review_val = self.pickRandomValue(num_of_reviews)
 
-                            #Check for any diffs
-                            if len(files) == 0:
-                                print >> sys.stderr, "There are no " + \
-                                    "diff files in this directory"
-                                return
+                    for l in range(0, review_val):
 
-                            diffset_history = DiffSetHistory.objects.create(
-                                name='testDiffFile' + str(i))
-                            diffset_history.save()
+                        if verbose:
+                            self.stdout.write("\t\tReview #" +\
+                                str(l) + "\n")
 
-                            for k in range(0, diff_val):
-                                random_number = random.randint(0, len(files)-1)
-                                file_to_open = diff_dir + files[random_number]
-                                #TEMPORARY WRITE OUT DIFF TO OPEN
-                                self.stdout.write("open: " + file_to_open + \
-                                "\n")
-                                filename = open(file_to_open, 'r')
-                                form = UploadDiffForm(
-                                    review_request.repository, filename)
-                                cur_diff=form.create(filename, None, diffset_history)
-                                review_request.diffset_history = diffset_history
-                                review_request.publish(new_user)
+                        reviews = Review.objects.create(
+                            review_request=review_request,
+                            user=new_user)
 
-                                # ADD THE REVIEWS IF ANY
-                                if num_of_reviews:
-                                    if len(num_of_reviews) == 1:
-                                        review_val = num_of_reviews[0]
-                                    else:
-                                        review_val = random.randrange(
-                                            num_of_reviews[0],
-                                            num_of_reviews[1])
+                        # ADD COMMENTS TO DIFFS IF ANY
+                        comment_val = self.pickRandomValue(num_of_diff_comments)
 
-                                    for l in range(0, review_val):
-                                        reviews = Review.objects.create(
-                                            review_request=review_request,
-                                            user=new_user)
+                        for m in range(0, comment_val):
 
-                                        # ADD COMMENTS TO DIFFS IF ANY
-                                        if num_of_diff_comments:
-                                            if len(num_of_diff_comments)==1:
-                                                comment_val = num_of_diff_comments[0]
-                                            else:
-                                                comment_val = random.randrange(
-                                                    num_of_diff_comments[0],
-                                                    num_of_diff_comments[1])
+                            if verbose:
+                                self.stdout.write("\t\t\tComments #" +\
+                                str(m) + "\n")
 
-                                            #Perform createDiffComments
-                                            self.createDiffComments(
-                                                comment_val,
-                                                cur_diff,
-                                                review_request,
-                                                reviews,
-                                                new_user)
+                            #Cur_diff is a diffset #TEMPORARY
+#                            self.stdout.write("cur_diff_all=" + str(cur_diff.files.all()) + "\n\n")
+#                            self.stdout.write("\nCOUNT=" + str(cur_diff.files.count()) + "\n")
 
-                #generate output as users & data is created
-                output = "username=" + new_user.username + ", userId=" + \
-                    str(new_user.id)
+                            for file_diff in cur_diff.files.all():
+                                break #HORRIBLE CHEAT BUT WORKS SINCE
+                                      #cur_diff is most recent
 
-                try:
-                   output += ", requests=" + str(req_val)
-                except NameError:
-                    pass
+                            #CHOOSE RANDOM LINES TO COMMENT
+                            #Max lines: should be mod'd in future to read diff
+                            max_lines = 220
+                            first_line = random.randrange(1,max_lines-1)
+                            remain_lines = max_lines - first_line
+                            num_lines = random.randrange(1,remain_lines)
 
-                output += "\n"
+                            diff_comment = Comment.objects.create(
+                                filediff=file_diff,
+                                text="comment number " + str(m+1),
+                                first_line=first_line,
+                                num_lines=num_lines)
 
-                self.stdout.write(output)
+                            review_request.publish(new_user)
+
+                            reviews.comments.add(diff_comment)
+                            reviews.save()      #Adds to the database
+
+                            reviews.publish(new_user)   #Publically available
+
+            #generate output as users & data is created
+            output = "\nuser " + new_user.username + " created successfully"
+
+            try:
+               output += " with " + str(req_val) + " requests"
+            except NameError:
+               pass
+
+            output += "\n"
+            self.stdout.write(output)
 
 
     #Parse the values given in the command line
@@ -257,50 +261,13 @@ class Command(NoArgsCommand):
         return string
 
 
-    #CREATE THE DIFF COMMENTS
-    #NOTE: TO UNDO: just cp from for to before return & replace above.
-    def createDiffComments(self, 
-        comment_val, cur_diff, review_request, reviews, new_user):
-
-        for m in range(0, comment_val):
-            #TEMPORARY OUTPUT
-            self.stdout.write("Num of diff comments:"+\
-                str(comment_val) + " CURRENT i=" + str(m+1) + "\n")
-
-            #Cur_diff is a diffset
-            self.stdout.write("########\n\ncur_diff_all=" +\
-                str(cur_diff.files.all()) + "\n\n")
-            self.stdout.write("\nCOUNT=" + str(cur_diff.files.count()) + "\n")
-
-            for file_diff in cur_diff.files.all():
-                self.stdout.write("cur_diff.files=" + \
-                    str(file_diff.dest_detail) + "\n")
-                break #HORRIBLE CHEAT BUT WORKS SINCE
-                      #cur_diff.files lists recent file
-
-            #CHOOSE RANDOM LINES TO COMMENT
-            #Max lines in diff just static aloc
-            #Should be mod in future to read
-            #   diff to get max line num
-            max_lines = 220
-            first_line = random.randrange(1,max_lines-1)
-            remain_lines = max_lines - first_line
-            num_lines = random.randrange(1,remain_lines)
-
-            self.stdout.write("\n1st line=" + str(first_line) +\
-                " REMAINING=" + str(remain_lines) + "\n")
-
-            diff_comment = Comment.objects.create(
-                filediff=file_diff,
-                text="comment number " + str(m+1),
-                first_line=first_line,
-                num_lines=num_lines)
-
-            review_request.publish(new_user)
-
-            reviews.comments.add(diff_comment)
-            reviews.save()      #Adds to the database
-
-            reviews.publish(new_user)   #Publically available
-
-        return
+    #This acts like a condition check in the program, value is a tuple
+    def pickRandomValue(self, value):
+        if value:
+            if len(value)==1:
+                return value[0]
+            else:
+                return random.randrange(value[0], value[1])
+        else:
+            return 0
+ 
