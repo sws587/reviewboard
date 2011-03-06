@@ -53,8 +53,8 @@ class Command(NoArgsCommand):
             repo_dir = str(os.path.abspath(sys.argv[0] +
                 'manage.py/../scmtools/testdata/git_repo'))
             if not os.path.exists(repo_dir):
-                self.stdout.write("The path to the repository does " + \
-                    "not exist\n")
+                print >> sys.stderr, "The path to the repository " +\
+                    "does not exist\n"
                 return
 
             test_repository = Repository.objects.create(
@@ -73,7 +73,7 @@ class Command(NoArgsCommand):
                 'commands/diffs'))
             if not os.path.exists(diff_dir_tmp):
                 print >> sys.stderr, "The path to the " + \
-                    "repository does not exist\n"
+                    "diff directory does not exist\n"
                 self.stdout.write("dir: " + diff_dir_tmp)
                 return
             diff_dir = diff_dir_tmp + '/' #add trailing slash
@@ -105,8 +105,7 @@ class Command(NoArgsCommand):
         # START ADDING DATA TO THE DATABASE
         for i in range(1, users+1):
             new_user = User.objects.create(
-                username=self.randUsername(), #temp to avoid flushing
-                #username="test"+str(i),
+                username=self.randUsername(), #avoids having to flush db
                 first_name="Testing", last_name="Thomas",
                 email="test@email.com",
                 #default password = test1
@@ -123,16 +122,14 @@ class Command(NoArgsCommand):
                 user=new_user,
                 first_time_setup_done=True, collapsed_diffs=True,
                 wordwrapped_diffs=True, syntax_highlighting=True,
-                show_submitted=True, sort_review_request_columns="",
-                sort_dashboard_columns="", sort_submitter_columns="",
-                sort_group_columns="", dashboard_columns="",
-                submitter_columns="", group_columns="")
+                show_submitted=True)
 
             #Review Requests
             req_val = self.pickRandomValue(num_of_requests)
 
             if verbose:
-                self.stdout.write("\nFor user: " + str(new_user.username) +\
+                self.stdout.write("\nFor user " + str(i) + ": " +\
+                    str(new_user.username) +\
                     "\n============================\n")
 
             for j in range(0, req_val):
@@ -176,7 +173,9 @@ class Command(NoArgsCommand):
                         review_request.repository, filename)
                     cur_diff=form.create(filename, None, diffset_history)
                     review_request.diffset_history = diffset_history
+                    review_request.save()
                     review_request.publish(new_user)
+                    filename.close()
 
                     # ADD THE REVIEWS IF ANY
                     review_val = self.pickRandomValue(num_of_reviews)
@@ -185,11 +184,13 @@ class Command(NoArgsCommand):
 
                         if verbose:
                             self.stdout.write("\t\tReview #" +\
-                                str(l) + "\n")
+                                str(l) + ":\n")
 
                         reviews = Review.objects.create(
                             review_request=review_request,
                             user=new_user)
+
+                        reviews.publish(new_user)
 
                         # ADD COMMENTS TO DIFFS IF ANY
                         comment_val = self.pickRandomValue(num_of_diff_comments)
@@ -199,10 +200,6 @@ class Command(NoArgsCommand):
                             if verbose:
                                 self.stdout.write("\t\t\tComments #" +\
                                 str(m) + "\n")
-
-                            #Cur_diff is a diffset #TEMPORARY
-#                            self.stdout.write("cur_diff_all=" + str(cur_diff.files.all()) + "\n\n")
-#                            self.stdout.write("\nCOUNT=" + str(cur_diff.files.count()) + "\n")
 
                             for file_diff in cur_diff.files.all():
                                 break #HORRIBLE CHEAT BUT WORKS SINCE
@@ -224,11 +221,11 @@ class Command(NoArgsCommand):
                             review_request.publish(new_user)
 
                             reviews.comments.add(diff_comment)
-                            reviews.save()      #Adds to the database
-
-                            reviews.publish(new_user)   #Publically available
+                            reviews.save() 
+                            reviews.publish(new_user)
 
             #generate output as users & data is created
+            #This can be simplified: here until required output is outlined
             output = "\nuser " + new_user.username + " created successfully"
 
             try:
@@ -250,11 +247,11 @@ class Command(NoArgsCommand):
             exit()
 
 
-    #Temporary function used to generate random usernames so no flushing needed
+    #Used to generate random usernames so no flushing needed
     def randUsername(self):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
         min = 5
-        max = 7
+        max = 8
         string=''
         for x in random.sample(alphabet,random.randint(min,max)):
             string+=x
