@@ -7,13 +7,13 @@ from django import forms
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.core.management.base import NoArgsCommand
+from django.db import transaction
 
 from reviewboard.accounts.models import Profile
 from reviewboard.diffviewer.models import FileDiff, DiffSet, DiffSetHistory
 from reviewboard.diffviewer.forms import UploadDiffForm
 from reviewboard.reviews.models import ReviewRequest, Review, Comment
 from reviewboard.scmtools.models import Repository, Tool
-
 
 class Command(NoArgsCommand):
     help = 'Populates the database with the specified fields'
@@ -31,6 +31,7 @@ class Command(NoArgsCommand):
             help='The number of comments per diff [min:max]')
         )
 
+    @transaction.commit_on_success
     def handle_noargs(self, **options):
         users = options.get('users', None)
         review_requests = options.get('review-requests', None)
