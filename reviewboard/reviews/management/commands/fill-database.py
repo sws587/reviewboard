@@ -165,7 +165,7 @@ class Command(NoArgsCommand):
                 for k in range(0, diff_val):
                 
                     if verbose:
-                        self.stdout.write("\tDiff #" + str(k) +\
+                        self.stdout.write(str(i) + ":\tDiff #" + str(k) +\
                             ":\n")
 
                     random_number = random.randint(0, len(files)-1)
@@ -185,8 +185,8 @@ class Command(NoArgsCommand):
                     for l in range(0, review_val):
 
                         if verbose:
-                            self.stdout.write("\t\tReview #" +\
-                                str(l) + ":\n")
+                            self.stdout.write(str(i) + ":" + str(j) +\
+                            ":\t\tReview #" + str(l) + ":\n")
 
                         reviews = Review.objects.create(
                             review_request=review_request,
