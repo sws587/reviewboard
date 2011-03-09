@@ -4,6 +4,7 @@ import sys
 from optparse import make_option
 
 from django import forms
+from django import db
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.core.management.base import NoArgsCommand
@@ -199,7 +200,8 @@ class Command(NoArgsCommand):
                         for m in range(0, comment_val):
 
                             if verbose:
-                                self.stdout.write("\t\t\tComments #" +\
+                                self.stdout.write(str(i) + ":" + str(j) +\
+                                ":\t\t\tComments #" +\
                                 str(m) + "\n")
 
                             for file_diff in cur_diff.files.all():
@@ -224,6 +226,21 @@ class Command(NoArgsCommand):
                             reviews.comments.add(diff_comment)
                             reviews.save() 
                             reviews.publish(new_user)
+
+                            db.reset_queries()
+
+                        #No comments, so have previous layer clear queries
+                        if comment_val == 0:
+                            db.reset_queries()
+
+                    if review_val == 0:
+                        db.reset_queries()
+
+                if diff_val == 0:
+                    db.reset_queries()
+
+            if req_val == 0:
+                db.reset_queries()
 
             #generate output as users & data is created
             #This can be simplified: here until required output is outlined
