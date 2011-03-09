@@ -160,10 +160,10 @@ class Command(NoArgsCommand):
                     diffset_history = DiffSetHistory.objects.create(
                         name='testDiffFile' + str(i))
                     diffset_history.save()
-                    
+
                 # won't execute if diff_val is 0, ie: no diffs requested
                 for k in range(0, diff_val):
-                
+
                     if verbose:
                         self.stdout.write(str(i) + ":\tDiff #" + str(k) +\
                             ":\n")
@@ -224,7 +224,7 @@ class Command(NoArgsCommand):
                             review_request.publish(new_user)
 
                             reviews.comments.add(diff_comment)
-                            reviews.save() 
+                            reviews.save()
                             reviews.publish(new_user)
 
                             db.reset_queries()
@@ -285,4 +285,4 @@ class Command(NoArgsCommand):
                 return random.randrange(value[0], value[1])
         else:
             return 0
- 
+
