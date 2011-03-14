@@ -265,10 +265,8 @@ class Command(NoArgsCommand):
             # This can be simplified: here until required output is outlined
             output = "\nuser " + new_user.username + " created successfully"
 
-            try:
+            if req_val != 0:
                 output += " with " + str(req_val) + " requests"
-            except NameError:
-                pass
 
             output += "\n"
             self.stdout.write(output)
