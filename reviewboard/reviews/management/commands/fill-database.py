@@ -1,5 +1,6 @@
 import os
 import random
+import string
 import sys
 from optparse import make_option
 
@@ -16,6 +17,7 @@ from reviewboard.diffviewer.forms import UploadDiffForm
 from reviewboard.reviews.models import ReviewRequest, Review, Comment
 from reviewboard.scmtools.models import Repository, Tool
 
+
 class Command(NoArgsCommand):
     help = 'Populates the database with the specified fields'
 
@@ -29,7 +31,9 @@ class Command(NoArgsCommand):
         make_option('--reviews', default=None, dest='reviews',
             help='The number of reviews per diff [min:max]'),
         make_option('--diff-comments', default=None, dest='diff-comments',
-            help='The number of comments per diff [min:max]')
+            help='The number of comments per diff [min:max]'),
+        make_option('-p', '--password', type="string", default=None,
+            dest='password', help='The login password for users created')
         )
 
     @transaction.commit_on_success
@@ -39,25 +43,31 @@ class Command(NoArgsCommand):
         diffs = options.get('diffs', None)
         reviews = options.get('reviews', None)
         diff_comments = options.get('diff-comments', None)
+        password = options.get('password', None)
         num_of_requests = None
         num_of_diffs = None
         num_of_reviews = None
         num_of_diff_comments = None
         random.seed()
 
-        verbose = True  #Generate details as program runs
+        verbose = True  # Generate details as program runs
 
         if review_requests:
             num_of_requests = self.parseCommand("review_requests",
                 review_requests)
 
-            # SETUP REPOSITORY
+            # setup repository
             repo_dir = str(os.path.abspath(sys.argv[0] +
-                'manage.py/../scmtools/testdata/git_repo'))
-            if not os.path.exists(repo_dir):
+                '/../scmtools/testdata/git_repo'))
+
+            # throw exception on error so transaction reverts
+            try:
+                if not os.path.exists(repo_dir):
+                    raise ValueError("No path to repository")
+            except ValueError:
                 print >> sys.stderr, "The path to the repository " +\
                     "does not exist\n"
-                return
+                exit()
 
             test_repository = Repository.objects.create(
                 name="Test Repository", path=repo_dir,
@@ -71,14 +81,18 @@ class Command(NoArgsCommand):
 
             # CREATE THE DIFF DIRECTORY LOCATIONS
             diff_dir_tmp = str(os.path.abspath(sys.argv[0] +
-                'manage.py/../reviews/management/' + \
-                'commands/diffs'))
-            if not os.path.exists(diff_dir_tmp):
-                print >> sys.stderr, "The path to the " + \
-                    "diff directory does not exist\n"
-                self.stdout.write("dir: " + diff_dir_tmp)
-                return
-            diff_dir = diff_dir_tmp + '/' #add trailing slash
+                '/../reviews/management/commands/diffs'))
+
+            # throw exception on error so transaction reverts
+            try:
+                if not os.path.exists(diff_dir_tmp):
+                    raise ValueError("Diff dir Error")
+            except ValueError:
+                print >> sys.stderr, "The path to the diffs " +\
+                    "does not exist\npath:", diff_dir_tmp
+                exit()
+
+            diff_dir = diff_dir_tmp + '/'  # add trailing slash
 
             #Get a list of the appropriate files
             files = []
@@ -87,10 +101,13 @@ class Command(NoArgsCommand):
                     files.append(chosen_file)
 
             #Check for any diffs in the files
-            if len(files) == 0:
+            try:
+                if len(files) == 0:
+                    raise ValueError("No diff files")
+            except ValueError:
                 print >> sys.stderr, "There are no " + \
                     "diff files in this directory"
-                return
+                exit()
 
         if reviews:
             num_of_reviews = self.parseCommand("reviews", reviews)
@@ -100,14 +117,17 @@ class Command(NoArgsCommand):
                 diff_comments)
 
         # users is required for any other operation
-        if not users:
+        try:
+            if not users:
+                raise ValueError("User Error")
+        except ValueError:
             print >> sys.stderr, "You must add at least 1 user\n"
             exit()
 
         # START ADDING DATA TO THE DATABASE
-        for i in range(1, users+1):
+        for i in range(1, users + 1):
             new_user = User.objects.create(
-                username=self.randUsername(), #avoids having to flush db
+                username=self.randUsername(),  # avoids having to flush db
                 first_name="Testing", last_name="Thomas",
                 email="test@email.com",
                 #default password = test1
@@ -116,9 +136,9 @@ class Command(NoArgsCommand):
                 last_login="2011-01-16 21:47:17.529855",
                 date_joined="2011-01-16 21:47:17.529855")
 
-            #Uncomment to set a custom password
-            #new_user.set_password('reviewboard1')
-            #new_user.save()
+            if password:
+                new_user.set_password(password)
+                new_user.save()
 
             Profile.objects.create(
                 user=new_user,
@@ -142,11 +162,11 @@ class Command(NoArgsCommand):
 
                 review_request = ReviewRequest.objects.create(new_user,
                     None)
-                review_request.public=True
-                review_request.summary="TEST v1.00 summary"
-                review_request.description="TEST v1.00 is a description"
-                review_request.shipit_count=0
-                review_request.repository=test_repository
+                review_request.public = True
+                review_request.summary = self.lorem_ipsum("summary")
+                review_request.description = self.lorem_ipsum("description")
+                review_request.shipit_count = 0
+                review_request.repository = test_repository
                 #set the targeted reviewer to superuser or 1st defined
                 review_request.target_people.add(
                     User.objects.get(id__exact="1"))
@@ -168,18 +188,18 @@ class Command(NoArgsCommand):
                         self.stdout.write(str(i) + ":\tDiff #" + str(k) +\
                             ":\n")
 
-                    random_number = random.randint(0, len(files)-1)
+                    random_number = random.randint(0, len(files) - 1)
                     file_to_open = diff_dir + files[random_number]
                     filename = open(file_to_open, 'r')
                     form = UploadDiffForm(
                         review_request.repository, filename)
-                    cur_diff=form.create(filename, None, diffset_history)
+                    cur_diff = form.create(filename, None, diffset_history)
                     review_request.diffset_history = diffset_history
                     review_request.save()
                     review_request.publish(new_user)
                     filename.close()
 
-                    # ADD THE REVIEWS IF ANY
+                    # add the reviews if any
                     review_val = self.pickRandomValue(num_of_reviews)
 
                     for l in range(0, review_val):
@@ -194,8 +214,9 @@ class Command(NoArgsCommand):
 
                         reviews.publish(new_user)
 
-                        # ADD COMMENTS TO DIFFS IF ANY
-                        comment_val = self.pickRandomValue(num_of_diff_comments)
+                        # add comments if any
+                        comment_val = self.pickRandomValue(
+                            num_of_diff_comments)
 
                         for m in range(0, comment_val):
 
@@ -204,20 +225,18 @@ class Command(NoArgsCommand):
                                 ":\t\t\tComments #" +\
                                 str(m) + "\n")
 
-                            for file_diff in cur_diff.files.all():
-                                break #HORRIBLE CHEAT BUT WORKS SINCE
-                                      #cur_diff is most recent
+                            file_diff = cur_diff.files.order_by('id')[0]
 
-                            #CHOOSE RANDOM LINES TO COMMENT
-                            #Max lines: should be mod'd in future to read diff
+                            # choose random lines to comment
+                            # Max lines: should be mod'd in future to read diff
                             max_lines = 220
-                            first_line = random.randrange(1,max_lines-1)
+                            first_line = random.randrange(1, max_lines - 1)
                             remain_lines = max_lines - first_line
-                            num_lines = random.randrange(1,remain_lines)
+                            num_lines = random.randrange(1, remain_lines)
 
                             diff_comment = Comment.objects.create(
                                 filediff=file_diff,
-                                text="comment number " + str(m+1),
+                                text="comment number " + str(m + 1),
                                 first_line=first_line,
                                 num_lines=num_lines)
 
@@ -229,7 +248,7 @@ class Command(NoArgsCommand):
 
                             db.reset_queries()
 
-                        #No comments, so have previous layer clear queries
+                        # No comments, so have previous layer clear queries
                         if comment_val == 0:
                             db.reset_queries()
 
@@ -242,47 +261,87 @@ class Command(NoArgsCommand):
             if req_val == 0:
                 db.reset_queries()
 
-            #generate output as users & data is created
-            #This can be simplified: here until required output is outlined
+            # generate output as users & data is created
+            # This can be simplified: here until required output is outlined
             output = "\nuser " + new_user.username + " created successfully"
 
             try:
-               output += " with " + str(req_val) + " requests"
+                output += " with " + str(req_val) + " requests"
             except NameError:
-               pass
+                pass
 
             output += "\n"
             self.stdout.write(output)
 
-
-    #Parse the values given in the command line
+    # Parse the values given in the command line
     def parseCommand(self, com_arg, com_string):
         try:
             return tuple((int(item.strip()) for item in com_string.split(':')))
         except ValueError:
             print >> sys.stderr, "You failed to provide \"" + com_arg \
-                + "\" with two values of type int."
+                + "\" with one or two values of type int.\n" +\
+                "Example: --" + com_arg + "=2:5"
             exit()
 
-
-    #Used to generate random usernames so no flushing needed
+    # Used to generate random usernames so no flushing needed
     def randUsername(self):
-        alphabet = 'abcdefghijklmnopqrstuvwxyz'
-        min = 5
-        max = 8
-        string=''
-        for x in random.sample(alphabet,random.randint(min,max)):
-            string+=x
-        return string
+        return ''.join(random.choice(string.ascii_lowercase)
+            for x in range(0, random.randrange(5, 9)))
 
-
-    #This acts like a condition check in the program, value is a tuple
+    # This acts like a condition check in the program, value is a tuple
     def pickRandomValue(self, value):
-        if value:
-            if len(value)==1:
-                return value[0]
-            else:
-                return random.randrange(value[0], value[1])
-        else:
+        if not value:
             return 0
 
+        if len(value) == 1:
+            return value[0]
+
+        return random.randrange(value[0], value[1])
+
+    # Create some random text for summary/description
+    def lorem_ipsum(self, ipsum_type):
+
+        if ipsum_type == "description":
+            max_size = 100
+        else:
+            max_size = 6
+
+        lorem_vocab = \
+        ['Lorem', 'ipsum', 'dolor', 'sit', 'amet', 'consectetur',
+        'Nullam', 'quis', 'erat', 'libero.', 'Ut', 'vel', 'velit', 'augue, ',
+        'risus.', 'Curabitur', 'dignissim', 'luctus', 'dui, ', 'et',
+        'tristique', 'id.', 'Etiam', 'blandit', 'adipiscing', 'molestie.',
+        'libero', 'eget', 'lacus', 'adipiscing', 'aliquet', 'ut', 'eget',
+        'urna', 'dui', 'auctor', 'id', 'varius', 'eget', 'consectetur',
+        'Sed', 'ornare', 'fermentum', 'erat', 'ut', 'consectetur', 'diam',
+        'in.', 'Aliquam', 'eleifend', 'egestas', 'erat', 'nec', 'semper.',
+        'a', 'mi', 'hendrerit', 'vestibulum', 'ut', 'vehicula', 'turpis.',
+        'habitant', 'morbi', 'tristique', 'senectus', 'et', 'netus', 'et',
+        'fames', 'ac', 'turpis', 'egestas.', 'Vestibulum', 'purus', 'odio',
+        'quis', 'consequat', 'non, ', 'vehicula', 'nec', 'ligula.', 'In',
+        'ipsum', 'in', 'volutpat', 'ipsum.', 'Morbi', 'aliquam', 'velit',
+        'molestie', 'suscipit.', 'Morbi', 'dapibus', 'nibh', 'vel',
+        'justo', 'nibh', 'facilisis', 'tortor, ', 'sit', 'amet', 'dictum',
+        'amet', 'arcu.', 'Quisque', 'ultricies', 'justo', 'non', 'neque',
+        'nibh', 'tincidunt.', 'Curabitur', 'sit', 'amet', 'sem', 'quis',
+        'vulputate.', 'Mauris', 'a', 'lorem', 'mi.', 'Donec', 'dolor',
+        'interdum', 'eu', 'scelerisque', 'vel', 'massa.', 'Vestibulum',
+        'risus', 'vel', 'ipsum', 'suscipit', 'laoreet.', 'Proin', 'congue',
+        'blandit.', 'Aenean', 'aliquet', 'auctor', 'nibh', 'sit', 'amet',
+        'Vestibulum', 'ante', 'ipsum', 'primis', 'in', 'faucibus', 'orci',
+        'posuere', 'cubilia', 'Curae;', 'Donec', 'lacinia', 'tincidunt',
+        'facilisis', 'nisl', 'eu', 'fermentum.', 'Ut', 'nec', 'laoreet',
+        'magna', 'egestas', 'nulla', 'pharetra', 'vel', 'egestas', 'tellus',
+        'Pellentesque', 'sed', 'pharetra', 'orci.', 'Morbi', 'eleifend, ',
+        'interdum', 'placerat,', 'mi', 'dolor', 'mollis', 'libero',
+        'quam', 'posuere', 'nisl.', 'Vivamus', 'facilisis', 'aliquam',
+        'condimentum', 'pulvinar', 'egestas.', 'Lorem', 'ipsum', 'dolor',
+        'consectetur', 'adipiscing', 'elit.', 'In', 'hac', 'habitasse',
+        'Aenean', 'blandit', 'lectus', 'et', 'dui', 'tincidunt', 'cursus',
+        'Suspendisse', 'ipsum', 'dui, ', 'accumsan', 'eget', 'imperdiet',
+        'est.', 'Integer', 'porta, ', 'ante', 'ac', 'commodo', 'faucibus',
+        'molestie', 'risus, ', 'a', 'imperdiet', 'eros', 'neque', 'ac',
+        'nisi', 'leo', 'pretium', 'congue', 'eget', 'quis', 'arcu.', 'Cras']
+
+        return ' '.join(random.choice(lorem_vocab)
+            for x in range(0, max_size))
