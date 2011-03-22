@@ -58,33 +58,33 @@ LOREM_VOCAB = \
     'nisi', 'leo', 'pretium', 'congue', 'eget', 'quis', 'arcu.', 'Cras']
 
 NAMES = \
-    ['Aaron', 'Abbey', 'Adan', 'Adelle', 'Agustin','Alan', 'Aleshia', 
-    'Alexia', 'Anderson', 'Ashely', 'Barbara', 'Belen', 'Bernardo', 
-    'Bernie', 'Bethanie', 'Bev', 'Boyd', 'Brad', 'Bret', 'Caleb', 
-    'Cammy', 'Candace', 'Carrol', 'Charlette', 'Charlie', 'Chelsea', 
-    'Chester', 'Claude', 'Daisy', 'David', 'Delila', 'Devorah', 
-    'Edwin', 'Elbert', 'Elisha', 'Elvis', 'Emmaline', 'Erin', 
-    'Eugene', 'Fausto', 'Felix', 'Foster', 'Garrett', 'Garry', 
-    'Garth', 'Gracie', 'Henry', 'Hertha', 'Holly', 'Homer', 
-    'Ileana', 'Isabella', 'Jacalyn', 'Jaime', 'Jeff', 'Jefferey', 
-    'Jefferson', 'Joie', 'Kanesha', 'Kassandra', 'Kirsten', 'Kymberly', 
-    'Lashanda', 'Lean', 'Lonnie', 'Luis', 'Malena', 'Marci', 'Margarett', 
-    'Marvel', 'Marvin', 'Mel', 'Melissia', 'Morton', 'Nickole', 'Nicky', 
-    'Odette', 'Paige', 'Patricia', 'Porsche', 'Rashida', 'Raul', 
-    'Renaldo', 'Rickie', 'Robbin', 'Russel', 'Sabine', 'Sabrina', 
-    'Sacha', 'Sam', 'Sasha', 'Shandi', 'Sherly', 'Stacey', 'Stephania', 
-    'Stuart', 'Talitha', 'Tanesha', 'Tena', 'Tobi', 'Tula', 'Valene', 
-    'Veda', 'Vikki', 'Wanda', 'Wendie', 'Wendolyn', 'Wilda', 'Wiley', 
+    ['Aaron', 'Abbey', 'Adan', 'Adelle', 'Agustin','Alan', 'Aleshia',
+    'Alexia', 'Anderson', 'Ashely', 'Barbara', 'Belen', 'Bernardo',
+    'Bernie', 'Bethanie', 'Bev', 'Boyd', 'Brad', 'Bret', 'Caleb',
+    'Cammy', 'Candace', 'Carrol', 'Charlette', 'Charlie', 'Chelsea',
+    'Chester', 'Claude', 'Daisy', 'David', 'Delila', 'Devorah',
+    'Edwin', 'Elbert', 'Elisha', 'Elvis', 'Emmaline', 'Erin',
+    'Eugene', 'Fausto', 'Felix', 'Foster', 'Garrett', 'Garry',
+    'Garth', 'Gracie', 'Henry', 'Hertha', 'Holly', 'Homer',
+    'Ileana', 'Isabella', 'Jacalyn', 'Jaime', 'Jeff', 'Jefferey',
+    'Jefferson', 'Joie', 'Kanesha', 'Kassandra', 'Kirsten', 'Kymberly',
+    'Lashanda', 'Lean', 'Lonnie', 'Luis', 'Malena', 'Marci', 'Margarett',
+    'Marvel', 'Marvin', 'Mel', 'Melissia', 'Morton', 'Nickole', 'Nicky',
+    'Odette', 'Paige', 'Patricia', 'Porsche', 'Rashida', 'Raul',
+    'Renaldo', 'Rickie', 'Robbin', 'Russel', 'Sabine', 'Sabrina',
+    'Sacha', 'Sam', 'Sasha', 'Shandi', 'Sherly', 'Stacey', 'Stephania',
+    'Stuart', 'Talitha', 'Tanesha', 'Tena', 'Tobi', 'Tula', 'Valene',
+    'Veda', 'Vikki', 'Wanda', 'Wendie', 'Wendolyn', 'Wilda', 'Wiley',
     'Willow', 'Yajaira', 'Yasmin', 'Yoshie', 'Zachariah', 'Zenia',
-    'Allbert', 'Amisano', 'Ammerman', 'Androsky', 'Arrowsmith', 
-    'Bankowski', 'Bleakley', 'Boehringer', 'Brandstetter', 
-    'Capehart', 'Charlesworth', 'Danforth', 'Debernardi', 
-    'Delasancha', 'Denkins', 'Edmunson', 'Ernsberger', 'Faupel', 
-    'Florence', 'Frisino', 'Gardner', 'Ghormley', 'Harrold', 
-    'Hilty', 'Hopperstad', 'Hydrick', 'Jennelle', 'Massari', 
-    'Solinski', 'Swisher', 'Talladino', 'Tatham', 'Thornhill', 
-    'Ulabarro', 'Welander', 'Xander', 'Xavier', 'Xayas', 'Yagecic', 
-    'Yagerita', 'Yamat', 'Ying', 'Yurek', 'Zaborski', 'Zeccardi', 
+    'Allbert', 'Amisano', 'Ammerman', 'Androsky', 'Arrowsmith',
+    'Bankowski', 'Bleakley', 'Boehringer', 'Brandstetter',
+    'Capehart', 'Charlesworth', 'Danforth', 'Debernardi',
+    'Delasancha', 'Denkins', 'Edmunson', 'Ernsberger', 'Faupel',
+    'Florence', 'Frisino', 'Gardner', 'Ghormley', 'Harrold',
+    'Hilty', 'Hopperstad', 'Hydrick', 'Jennelle', 'Massari',
+    'Solinski', 'Swisher', 'Talladino', 'Tatham', 'Thornhill',
+    'Ulabarro', 'Welander', 'Xander', 'Xavier', 'Xayas', 'Yagecic',
+    'Yagerita', 'Yamat', 'Ying', 'Yurek', 'Zaborski', 'Zeccardi',
     'Zecchini', 'Zimerman', 'Zitzow', 'Zoroiwchak', 'Zullinger', 'Zyskowski']
 
 
@@ -108,7 +108,7 @@ class Command(NoArgsCommand):
 
     @transaction.commit_on_success
     def handle_noargs(self, users=None, review_requests=None, diffs=None,
-                      reviews=None, diff_comments=None, password=None, 
+                      reviews=None, diff_comments=None, password=None,
                       verbosity=NORMAL, **options):
         num_of_requests = None
         num_of_diffs = None
@@ -172,8 +172,8 @@ class Command(NoArgsCommand):
                 first_name=random.choice(NAMES),
                 last_name=random.choice(NAMES),
                 email="test@example.com",
-                is_staff=False, 
-                is_active=True, 
+                is_staff=False,
+                is_active=True,
                 is_superuser=False)
 
             if password:
@@ -185,9 +185,9 @@ class Command(NoArgsCommand):
 
             Profile.objects.create(
                 user=new_user,
-                first_time_setup_done=True, 
+                first_time_setup_done=True,
                 collapsed_diffs=True,
-                wordwrapped_diffs=True, 
+                wordwrapped_diffs=True,
                 syntax_highlighting=True,
                 show_submitted=True)
 
@@ -299,7 +299,7 @@ class Command(NoArgsCommand):
             if req_val != 0:
                 print "user %s created with %s requests" % (
                     new_user.username, req_val)
-            else:    
+            else:
                 print "user %s created successfully" % new_user.username
 
     def parseCommand(self, com_arg, com_string):
