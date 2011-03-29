@@ -1764,6 +1764,48 @@ $(document).ready(function() {
         return false;
     });
 
+    /* UploadedFileComment */
+    $(".file-review").click(function() {
+
+        alert("TOUCHE");
+
+        var comment;
+
+            var link = $("#comment-detail")
+                .commentDlg()
+                .css("z-index", 999);
+            link.appendTo("body");
+
+            link
+                .one("close", function() {
+                    self._createDraftComment();
+
+                    link
+                        .setDraftComment(self.draftComment)
+                        .setCommentsList(self.comments, "comment")
+                        .css({
+                            left: $(document).scrollLeft() + 
+                                  ($(window).width() - gCommentDlg.width()) / 2,
+                            top:  self.endRow.offset().top +
+                                  self.endRow.height()
+                        })
+                        .close();
+                });
+
+        for (var el in $(".file-review")) {
+
+            comment = gReviewRequest.createReview().createFileComment($(el).attr("data-file-id"));
+            link
+                .setDraftComment(comment)
+                .positionToSide(link, { 
+                    side: 'b', 
+                    fitOnScreen: true 
+                });
+            link.open();
+        }
+
+    });
+
     if (gUserAuthenticated) {
         if (window["gEditable"]) {
             $(".editable").reviewRequestFieldEditor();

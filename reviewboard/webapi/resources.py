@@ -1,6 +1,7 @@
 import logging
 import re
 import urllib
+import pdb
 
 import dateutil.parser
 from django.conf import settings
@@ -3852,6 +3853,8 @@ class ReviewFileCommentResource(BaseFileCommentResource):
             review = review_resource.get_object(request, *args, **kwargs)
         except ObjectDoesNotExist:
             return DOES_NOT_EXIST
+        
+        #pdb.set_trace()
 
         if not review_resource.has_modify_permissions(request, review):
             return _no_access_error(request.user)
@@ -3866,8 +3869,13 @@ class ReviewFileCommentResource(BaseFileCommentResource):
                 }
             }
 
+        print "text=%s" % text
+
         new_comment = self.model(file=file, text=text)
         new_comment.save()
+        print "comment=%s" % new_comment
+
+        print type(new_comment)
 
         review.file_comments.add(new_comment)
         review.save()

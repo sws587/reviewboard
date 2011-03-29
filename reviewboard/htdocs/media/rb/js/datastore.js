@@ -1741,11 +1741,13 @@ $.extend(RB.FileComment.prototype, {
 
         self.ready(function() {
             self.review.ensureCreated(function() {
+                alert("TEST");
                 var type;
                 var url;
                 var data = {
                     text: self.text,
                 };
+                alert("Text="+self.text);
 
                 if (self.loaded) {
                     type = "PUT";
