@@ -836,14 +836,18 @@ $.fn.commentDlg = function() {
     this.handleResize = function() {
         var width = self.width();
         var height = self.height();
+
         var formWidth = width - draftForm.getExtents("bp", "lr");
         var boxHeight = height;
         var commentsWidth = 0;
 
+        /*Joining seems to cause problems for file-uploader*/
         if (commentsPane.is(":visible")) {
             commentsPane
-                .width(COMMENTS_BOX_WIDTH - commentsPane.getExtents("bp", "lr"))
-                .height(boxHeight - commentsPane.getExtents("bp", "tb"))
+                .width(COMMENTS_BOX_WIDTH - commentsPane.getExtents("bp", "lr"));
+            commentsPane
+                .height(boxHeight - commentsPane.getExtents("bp", "tb"));
+            commentsPane
                 .move(0, 0, "absolute");
 
             commentsList.height(commentsPane.height() -
@@ -854,9 +858,13 @@ $.fn.commentDlg = function() {
             formWidth -= commentsWidth;
         }
 
+        /* Caused an error combining all of these together in firefox for
+         * file-uploader */
         draftForm
-            .width(formWidth)
-            .height(boxHeight - draftForm.getExtents("bp", "tb"))
+            .width(formWidth);
+        draftForm
+            .height(boxHeight - draftForm.getExtents("bp", "tb"));
+        draftForm
             .move(commentsWidth, 0, "absolute");
 
         var textFieldPos = textField.position();
@@ -1767,31 +1775,41 @@ $(document).ready(function() {
     /* UploadedFileComment */
     $(".file-review").click(function() {
 
-        alert("TOUCHE");
+        var self=this;
+        var el=this.el;
+        var data=$('#mycustomid').attr('fileid');
 
-        var comment;
+        /*This is how it should be done but is undefined
+        for (var el in $(".file-review")) {
+            alert("data-file-id=" + $(el).attr('fileid'));
+            
+            break;
+        } */
 
-            var link = $("#comment-detail")
+        var comment = gReviewRequest.createReview().createFileComment(data);
+        var comments = [];
+
+        var gCommentDlg = $("#comment-detail")
                 .commentDlg()
                 .css("z-index", 999);
-            link.appendTo("body");
+        gCommentDlg.appendTo("body");
 
-            link
-                .one("close", function() {
-                    self._createDraftComment();
-
-                    link
-                        .setDraftComment(self.draftComment)
-                        .setCommentsList(self.comments, "comment")
-                        .css({
-                            left: $(document).scrollLeft() + 
-                                  ($(window).width() - gCommentDlg.width()) / 2,
-                            top:  self.endRow.offset().top +
-                                  self.endRow.height()
-                        })
-                        .close();
+        gCommentDlg
+            .setDraftComment(comment)
+            .positionToSide(gCommentDlg, {
+                side: 'b',
+                fitOnScreen: true
                 });
+        
+        $.event.add(comment, "saved", function() {
+            showReviewBanner();
+            });
+        gCommentDlg
+            .open($('#mycustomid'));
 
+    });
+
+/*
         for (var el in $(".file-review")) {
 
             comment = gReviewRequest.createReview().createFileComment($(el).attr("data-file-id"));
@@ -1804,7 +1822,7 @@ $(document).ready(function() {
             link.open();
         }
 
-    });
+    }); */
 
     if (gUserAuthenticated) {
         if (window["gEditable"]) {
