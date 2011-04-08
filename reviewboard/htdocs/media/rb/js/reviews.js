@@ -1779,13 +1779,6 @@ $(document).ready(function() {
         var el=this.el;
         var data=$('#mycustomid').attr('fileid');
 
-        /*This is how it should be done but is undefined
-        for (var el in $(".file-review")) {
-            alert("data-file-id=" + $(el).attr('fileid'));
-            
-            break;
-        } */
-
         var comment = gReviewRequest.createReview().createFileComment(data);
         var comments = [];
 
@@ -1808,21 +1801,6 @@ $(document).ready(function() {
             .open($('#mycustomid'));
 
     });
-
-/*
-        for (var el in $(".file-review")) {
-
-            comment = gReviewRequest.createReview().createFileComment($(el).attr("data-file-id"));
-            link
-                .setDraftComment(comment)
-                .positionToSide(link, { 
-                    side: 'b', 
-                    fitOnScreen: true 
-                });
-            link.open();
-        }
-
-    }); */
 
     if (gUserAuthenticated) {
         if (window["gEditable"]) {

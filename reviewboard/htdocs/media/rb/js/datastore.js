@@ -1714,7 +1714,6 @@ $.extend(RB.FileComment.prototype, {
      * @param {string} text  The new text to set.
      */
     setText: function(text) {
-        alert("TEXT IN setText:"+text);
         this.text = text;
         $.event.trigger("textChanged", null, this);
     },
@@ -1747,7 +1746,6 @@ $.extend(RB.FileComment.prototype, {
                 var data = {
                     text: self.text,
                 };
-                alert("Text="+self.text+", file_id="+self.file_id);
 
                 if (self.loaded) {
                     type = "PUT";
