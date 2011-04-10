@@ -198,7 +198,8 @@ class NewReviewRequestForm(forms.Form):
         except ChangeNumberInUseError:
             # The user is updating an existing review request, rather than
             # creating a new one.
-            review_request = ReviewRequest.objects.get(changenum=changenum)
+            review_request = ReviewRequest.objects.get(changenum=changenum,
+                                                       repository=repository)
             review_request.update_from_changenum(changenum)
 
             if review_request.status == 'D':
@@ -314,8 +315,6 @@ class UploadScreenshotForm(forms.Form):
         screenshot = Screenshot(caption=self.cleaned_data['caption'],
                                 draft_caption=self.cleaned_data['caption'])
         screenshot.image.save(file.name, file, save=True)
-
-        review_request.screenshots.add(screenshot)
 
         draft = ReviewRequestDraft.create(review_request)
         draft.screenshots.add(screenshot)
