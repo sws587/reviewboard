@@ -262,10 +262,16 @@ $.fn.reviewsAutoComplete = function(options) {
                 /*
                  * Add the footer to the bottom of the results pane the
                  * first time it's created.
+                 *
+                 * Note that we may have multiple .ui-autocomplete-results
+                 * elements, and we don't necessarily know which is tied to
+                 * this. So, we'll look for all instances that don't contain
+                 * a footer.
                  */
-                var resultsPane = $(".ui-autocomplete-results");
+                var resultsPane = $(".ui-autocomplete-results:not(" +
+                                    ":has(.ui-autocomplete-footer))");
 
-                if ($(".ui-autocomplete-footer", resultsPane).length == 0) {
+                if (resultsPane.length > 0) {
                     $("<div/>")
                         .addClass("ui-autocomplete-footer")
                         .text("Press Tab to auto-complete.")
@@ -359,7 +365,7 @@ $.fn.commentSection = function(review_id, context_id, context_type) {
                         .attr("for", yourcomment_id)
                         .append($("<a/>")
                             .attr("href", gUserURL)
-                            .text(gUserFullName)
+                            .html(gUserFullName)
                         )
                     )
                     .append('<dd><pre id="' + yourcomment_id + '"/></dd>')

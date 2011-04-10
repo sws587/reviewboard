@@ -9,13 +9,14 @@ from djblets.util.misc import get_object_or_none
 from reviewboard.diffviewer import forms as diffviewer_forms
 from reviewboard.diffviewer.models import DiffSet
 from reviewboard.reviews.errors import OwnershipError
-from reviewboard.reviews.models import DefaultReviewer, ReviewRequest, \
+from reviewboard.reviews.models import DefaultReviewer, Group, ReviewRequest, \
                                        ReviewRequestDraft, Screenshot
 from reviewboard.scmtools.errors import SCMError, ChangeNumberInUseError, \
                                         InvalidChangeNumberError, \
                                         ChangeSetError
 from reviewboard.scmtools.models import Repository
 from reviewboard.site.models import LocalSite
+from reviewboard.site.validation import validate_review_groups, validate_users
 
 
 class DefaultReviewerForm(forms.ModelForm):
@@ -51,8 +52,35 @@ class DefaultReviewerForm(forms.ModelForm):
 
         return file_regex
 
+    def clean(self):
+        validate_users(self, 'people')
+        validate_review_groups(self, 'groups')
+
+        # Now make sure the repositories are valid.
+        local_site = self.cleaned_data['local_site']
+        repositories = self.cleaned_data['repository']
+
+        for repository in repositories:
+            if repository.local_site != local_site:
+                raise forms.ValidationError([
+                    _("The repository '%s' doesn't exist on the local site.")
+                    % repository.name,
+                ])
+
+        return self.cleaned_data
+
     class Meta:
         model = DefaultReviewer
+
+
+class GroupForm(forms.ModelForm):
+    def clean(self):
+        validate_users(self)
+
+        return self.cleaned_data
+
+    class Meta:
+        model = Group
 
 
 class NewReviewRequestForm(forms.Form):
@@ -69,19 +97,19 @@ class NewReviewRequestForm(forms.Form):
         required=False,
         help_text=_("The absolute path in the repository the diff was "
                     "generated in."),
-        widget=forms.TextInput(attrs={'size': '35'}))
+        widget=forms.TextInput(attrs={'size': '62'}))
     diff_path = forms.FileField(
         label=_("Diff"),
         required=False,
         help_text=_("The new diff to upload."),
-        widget=forms.FileInput(attrs={'size': '35'}))
+        widget=forms.FileInput(attrs={'size': '62'}))
     parent_diff_path = forms.FileField(
         label=_("Parent Diff"),
         required=False,
         help_text=_("An optional diff that the main diff is based on. "
                     "This is usually used for distributed revision control "
                     "systems (Git, Mercurial, etc.)."),
-        widget=forms.FileInput(attrs={'size': '35'}))
+        widget=forms.FileInput(attrs={'size': '62'}))
     repository = forms.ModelChoiceField(
         label=_("Repository"),
         queryset=Repository.objects.none(),
@@ -170,7 +198,8 @@ class NewReviewRequestForm(forms.Form):
         except ChangeNumberInUseError:
             # The user is updating an existing review request, rather than
             # creating a new one.
-            review_request = ReviewRequest.objects.get(changenum=changenum)
+            review_request = ReviewRequest.objects.get(changenum=changenum,
+                                                       repository=repository)
             review_request.update_from_changenum(changenum)
 
             if review_request.status == 'D':
@@ -286,8 +315,6 @@ class UploadScreenshotForm(forms.Form):
         screenshot = Screenshot(caption=self.cleaned_data['caption'],
                                 draft_caption=self.cleaned_data['caption'])
         screenshot.image.save(file.name, file, save=True)
-
-        review_request.screenshots.add(screenshot)
 
         draft = ReviewRequestDraft.create(review_request)
         draft.screenshots.add(screenshot)

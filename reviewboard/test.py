@@ -38,7 +38,11 @@ try:
     from PIL import Image
     Image.init()
 except ImportError:
-    pass
+    try:
+        from Image import Image
+        Image.init()
+    except ImportError:
+        pass
 
 from django.conf import settings
 from django.core import management
@@ -85,7 +89,10 @@ def setup_media_dirs():
         if platform.system() == 'windows':
             shutil.copytree(src_dir, dest_dir)
         else:
-            os.symlink(src_dir, dest_dir)
+            try:
+                os.symlink(src_dir, dest_dir)
+            except OSError:
+                pass
 
     generate_media_serial()
 
@@ -130,7 +137,6 @@ def runner(module_list, verbosity=1, interactive=True, extra_tests=[]):
 
     nose_argv = ['test.py', '-v',
                  '--with-doctest', '--doctest-extension=.txt',
-                 '--where=reviewboard',
                  '-e', exclusion]
 
     if '--with-coverage' in sys.argv:
@@ -138,8 +144,11 @@ def runner(module_list, verbosity=1, interactive=True, extra_tests=[]):
                       '--cover-package=reviewboard']
         sys.argv.remove('--with-coverage')
 
+    for package in settings.TEST_PACKAGES:
+        nose_argv.append('--where=%s' % package)
+
     if '--with-webtests' in sys.argv:
-        nose_argv += ['--where=webtests']
+        nose_argv.append('--where=webtests')
         sys.argv.remove('--with-webtests')
 
     # manage.py captures everything before "--"

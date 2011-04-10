@@ -80,6 +80,9 @@ def _find_review_request(request, review_request_id, local_site_name):
     """
     if local_site_name:
         local_site = get_object_or_404(LocalSite, name=local_site_name)
+        if not local_site.is_accessible_by(request.user):
+            return None, _render_permission_denied(request)
+
         review_request = get_object_or_404(ReviewRequest,
                                            local_site=local_site,
                                            local_id=review_request_id)
@@ -227,10 +230,8 @@ def new_review_request(request,
     """
     if local_site_name:
         local_site = get_object_or_404(LocalSite, name=local_site_name)
-
-        if (request.user.is_anonymous() or
-            not local_site.users.filter(pk=request.user.pk).exists()):
-            return _render_permission_denied(requset)
+        if not local_site.is_accessible_by(request.user):
+            return _render_permission_denied(request)
     else:
         local_site = None
 
@@ -258,7 +259,6 @@ def new_review_request(request,
 
 
 @check_login_required
-@valid_prefs_required
 def review_detail(request,
                   review_request_id,
                   local_site_name=None,
@@ -471,9 +471,12 @@ def all_review_requests(request,
     """
     Displays a list of all review requests.
     """
-    local_site = get_object_or_none(LocalSite, name=local_site_name)
-    if local_site_name and not local_site:
-        raise Http404
+    if local_site_name:
+        local_site = get_object_or_404(LocalSite, name=local_site_name)
+        if not local_site.is_accessible_by(request.user):
+            return _render_permission_denied(request)
+    else:
+        local_site = None
     datagrid = ReviewRequestDataGrid(request,
         ReviewRequest.objects.public(request.user,
                                      status=None,
@@ -491,8 +494,13 @@ def submitter_list(request,
     """
     Displays a list of all users.
     """
-    grid = SubmitterDataGrid(
-        request, local_site=get_object_or_none(LocalSite, name=local_site_name))
+    if local_site_name:
+        local_site = get_object_or_404(LocalSite, name=local_site_name)
+        if not local_site.is_accessible_by(request.user):
+            return _render_permission_denied(request)
+    else:
+        local_site = None
+    grid = SubmitterDataGrid(request, local_site=local_site)
     return grid.render_to_response(template_name)
 
 
@@ -503,8 +511,13 @@ def group_list(request,
     """
     Displays a list of all review groups.
     """
-    grid = GroupDataGrid(
-        request, local_site=get_object_or_none(LocalSite, name=local_site_name))
+    if local_site_name:
+        local_site = get_object_or_404(LocalSite, name=local_site_name)
+        if not local_site.is_accessible_by(request.user):
+            return _render_permission_denied(request)
+    else:
+        local_site = None
+    grid = GroupDataGrid(request, local_site=local_site)
     return grid.render_to_response(template_name)
 
 
@@ -529,7 +542,12 @@ def dashboard(request,
     """
     view = request.GET.get('view', None)
 
-    local_site = get_object_or_none(LocalSite, name=local_site_name)
+    if local_site_name:
+        local_site = get_object_or_404(LocalSite, name=local_site_name)
+        if not local_site.is_accessible_by(request.user):
+            return _render_permission_denied(request)
+    else:
+        local_site = None
 
     if view == "watched-groups":
         # This is special. We want to return a list of groups, not
@@ -537,9 +555,6 @@ def dashboard(request,
         grid = WatchedGroupDataGrid(request, local_site=local_site)
     else:
         grid = DashboardDataGrid(request, local_site=local_site)
-
-    user = request.user
-    profile = user.get_profile()
 
     return grid.render_to_response(template_name)
 
@@ -553,7 +568,12 @@ def group(request,
     A list of review requests belonging to a particular group.
     """
     # Make sure the group exists
-    local_site = get_object_or_none(LocalSite, name=local_site_name)
+    if local_site_name:
+        local_site = get_object_or_404(LocalSite, name=local_site_name)
+        if not local_site.is_accessible_by(request.user):
+            return _render_permission_denied(request)
+    else:
+        local_site = None
     group = get_object_or_404(Group, name=name, local_site=local_site)
 
     if not group.is_accessible_by(request.user):
@@ -576,10 +596,17 @@ def group_members(request,
     """
     A list of users registered for a particular group.
     """
+    if local_site_name:
+        local_site = get_object_or_404(LocalSite, name=local_site_name)
+        if not local_site.is_accessible_by(request.user):
+            return _render_permission_denied(request)
+    else:
+        local_site = None
+
     # Make sure the group exists
     group = get_object_or_404(Group,
                               name=name,
-                              local_site__name=local_site_name)
+                              local_site=local_site)
 
     if not group.is_accessible_by(request.user):
         return _render_permission_denied(
@@ -595,21 +622,26 @@ def group_members(request,
 @check_login_required
 def submitter(request,
               username,
-              template_name='reviews/datagrid.html',
+              template_name='reviews/user_page.html',
               local_site_name=None):
     """
     A list of review requests owned by a particular user.
     """
-    local_site = get_object_or_none(LocalSite, name=local_site_name)
-    if local_site_name and not local_site:
-        raise Http404
+    if local_site_name:
+        local_site = get_object_or_404(LocalSite, name=local_site_name)
+        if not local_site.is_accessible_by(request.user):
+            return _render_permission_denied(request)
+    else:
+        local_site = None
 
     # Make sure the user exists
     if local_site:
-        if not local_site.users.filter(username=username).exists():
+        try:
+            user = local_site.users.get(username=username)
+        except User.DoesNotExist:
             raise Http404
     else:
-        get_object_or_404(User, username=username)
+        user = get_object_or_404(User, username=username)
 
     datagrid = ReviewRequestDataGrid(request,
         ReviewRequest.objects.from_user(username, status=None,
@@ -618,7 +650,9 @@ def submitter(request,
         _("%s's review requests") % username,
         local_site=local_site)
 
-    return datagrid.render_to_response(template_name)
+    return datagrid.render_to_response(template_name, extra_context={
+        'viewing_user': user,
+    })
 
 
 @check_login_required
@@ -1064,3 +1098,34 @@ def search(request,
                        extra_context={'query': query,
                                       'extra_query': 'q=%s' % query,
                                      })
+
+
+@check_login_required
+def user_infobox(request, username,
+                 template_name='accounts/user_infobox.html',
+                 local_site_name=None):
+    """Displays a user info popup.
+
+    This is meant to be embedded in other pages, rather than being
+    a standalone page.
+    """
+    user = get_object_or_404(User, username=username)
+
+    if local_site_name:
+        local_site = get_object_or_404(LocalSite, name=local_site_name)
+
+        if not local_site.is_accessible_by(request.user):
+            return _render_permission_denied(request)
+
+    etag = ':'.join([user.first_name, user.last_name, user.email,
+                     str(user.last_login), str(settings.AJAX_SERIAL)])
+
+    if etag_if_none_match(request, etag):
+        return HttpResponseNotModified()
+
+    response = render_to_response(template_name, {
+        'user': user,
+    })
+    set_etag(response, etag)
+
+    return response
